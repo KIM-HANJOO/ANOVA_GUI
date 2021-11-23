@@ -4,6 +4,10 @@ import os
 import pandas as pd
 import numpy as np
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+
 ########################################################################
 
 def file_open() :
@@ -69,20 +73,22 @@ class Input_box() :
 		else :
 			os.chdir(input_dir)
 			df = read_excel(os.listdir(input_dir)[0])
+			self.df = df
 			
 			self.excel_name = os.listdir(input_dir)[0]
 			self.num_of_groups = len(df.loc[:, 'group'].unique())
-			self.num_of_variables = len(df.columns)
+			self.num_of_variables = len(df.columns) - 1
 			self.num_of_profiles = df.shape[0]
 			
 			self.num_of_groups = str(self.num_of_groups)
 			self.num_of_variables = str(self.num_of_variables)
 			self.num_of_profiles = str(self.num_of_profiles)
+			self.columns = df.columns
 			
 			if len(df.columns) > 6 :
-				self.name_of_variables = str(df.columns.tolist()[ : 3])[ : -1] + ' ... ' + str(df.columns.tolist()[ -3 :])[1 :]
+				self.name_of_variables = str(df.columns.tolist()[1 : 4])[ : -1] + ' ... ' + str(df.columns.tolist()[ -3 :])[1 :]
 			else :
-				self.name_of_variables = str(df.columns.tolist())
+				self.name_of_variables = str(df.columns.tolist()[1 : ])
 
 def refresh(input_dir, width_1, height_1, excel_name_frame, info_frame, input_box, label_excel_name, entry_1, entry_2, entry_3, entry_4) :
 	print('reloading...')
@@ -134,7 +140,7 @@ root = tk.Tk()
 root.title("ANOVA(scikit-learn module)_GUI.ver")
 root.option_add("*tearOff", False)
 root.iconbitmap(package_dir + '\\icon.ico')
-
+root.resizable(0, 0)
 #root.geometry('600x500')
 
 # Create a style
@@ -158,6 +164,8 @@ g = tk.DoubleVar(value=75.0)
 h = tk.BooleanVar()
 
 
+########################################################################
+
 # set menubar
 menubar = tk.Menu(root)
 
@@ -175,16 +183,25 @@ menubar.add_cascade(label = "LICENSE", menu = filemenu2)
 
 root.config(menu=menubar)
 
+########################################################################
+
+
 # set Frames
 excel_name_frame = ttk.LabelFrame(root, text = '< excel >', padding = (20, 10))
 info_frame = ttk.LabelFrame(root, text = '< INFO >', padding = (20, 10))
 separator = ttk.Separator(root)
 button_frame = ttk.LabelFrame(root, text = '< REFRESH & RUN >', padding = (20, 10))
+plot_frame = ttk.LabelFrame(root, text = '< PLOT >', padding = (20, 10))
 
+# set Frame grid
 excel_name_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
 info_frame.grid(row = 1, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
 separator.grid(row = 2, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
 button_frame.grid(row = 3, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+plot_frame.grid(row = 0, column = 1, padx = (20, 20), pady = 10, sticky = 'nsew', rowspan = 4)
+
+########################################################################
+
 
 # excel_name_frame
 label_excel_name = ttk.Label(excel_name_frame, text = input_box.excel_name)
@@ -195,7 +212,6 @@ label_excel_name.grid(row = 0, column = 0)
 
 width_1 = 30
 height_1 = 10
-
 
 
 # info_frame | set labels and entries
@@ -249,6 +265,35 @@ button_2.grid(row = 0, column = 1, padx = width_2, pady = height_2)
 
 button_3 = ttk.Button(button_frame, text = "RUN ALL", style="Accent.TButton")
 button_3.grid(row = 0, column = 2, padx = width_2, pady = height_2)
+
+
+# plot_frame
+
+# get from DataFrame
+df = input_box.df
+fig = plt.figure(figsize = (5, 4))     #figure(도표) 생성
+ax = fig.add_subplot(1, 1, 1)
+
+xvalues = []
+for i in range(int(num_of_variables)) :
+	xvalues.append(i)
+xvalues_name = df.columns.tolist()[1 :]
+
+for group in df.loc[:, 'group'].unique() :
+	temp = df[df['group'] == group]
+	temp.reset_index(drop = True, inplace = True)
+	color = np.random.rand(3,)
+	for profile in range(temp.shape[0]) :
+		startpoint = xvalues_name[1]
+		ax.plot(xvalues, temp.iloc[profile, 1 : ])
+		
+ax.set_xlim([xvalues[0], xvalues[-1]])		
+ax.set_xticks(xvalues)
+ax.set_xticklabels(xvalues_name, rotation = 90)
+
+# plot to canvas
+canvas = FigureCanvasTkAgg(fig, master = plot_frame)
+canvas.get_tk_widget().grid(column = 0, row = 1)
 
 
 # status bar
