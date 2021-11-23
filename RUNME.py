@@ -814,7 +814,7 @@ filemenu.add_command(label="About MANOVA in statsmodels",\
 	command = lambda : menubar_url('https://www.statsmodels.org/dev/generated/statsmodels.multivariate.manova.MANOVA.html'))
 	
 filemenu.add_command(label="HOW TO USE",\
-	command = lambda : menubar_url('https://github.com/suhyuuk/ANOVA_GUI'))
+	command = lambda : menubar_url('https://github.com/KIM-HANJOO/ANOVA_GUI'))
 filemenu.add_command(label="Exit", command = root.destroy)
 
 menubar.add_cascade(label="HELP", menu=filemenu)
@@ -825,7 +825,7 @@ filemenu2.add_command(label = "Theme | Forest-ttk-theme by rdbende (MIT license)
 	command = lambda : menubar_url('https://github.com/rdbende/Forest-ttk-theme'))
 	
 filemenu2.add_command(label = "GitHub",\
-	command = lambda : menubar_url('https://github.com/suhyuuk/ANOVA_GUI'))
+	command = lambda : menubar_url('https://github.com/KIM-HANJOO/ANOVA_GUI'))
 	
 filemenu2.add_command(label = "Korea.UNIV | Urban Energy and Environment", \
 	command = lambda : menubar_url('http://urbane-squared.korea.ac.kr/'))
