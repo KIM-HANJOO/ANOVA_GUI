@@ -22,8 +22,12 @@ from statsmodels.multivariate.manova import MANOVA
 
 def split_string(string1, string2) :
 	string2 = string2.replace("\n", "")
+	
 	if len(string2) > 100 :
 		string2 = string2[ : 36] + ' ...' + string2[-40 :]
+	else :
+		pass
+		
 	result_string = ""
 
 	lefthand = 20
@@ -133,7 +137,44 @@ class Input_box() :
 		else :
 			os.chdir(input_dir)
 			df = read_excel(os.listdir(input_dir)[0])
+					
+			# simple adjustments to dataframe
+			dc =[]
+			for c in df.columns :
+				if 'drop_' in c :
+					dc.append(c)
+					
+			df = df.drop(dc, axis = 1)
+			df.dropna(axis = 0, inplace = True)
+			df.reset_index(drop = True, inplace = True)
+			
+			column_order_1 = []
+			column_order_2 = []
+			for c in df.columns :
+				if 'group' == c :
+					column_order_1.append(c)
+				else :
+					column_order_2.append(c)
+			column_order = column_order_1 + column_order_2
+			df = df[column_order]
 			self.df = df
+			
+			
+			
+			# make string for MANOVA
+			self.string = 'None'
+			
+			if len(column_order_2) > 1 :
+				string = '{}'.format(column_order_2[0])
+				for i in range(1, len(column_order_2)) :
+					string += '+ {}'.format(column_order[i])
+					
+				string += ' ~ group'
+				self.string = string
+			
+			
+			
+			# set self.variables
 			
 			self.excel_name = os.listdir(input_dir)[0]
 			self.num_of_groups = len(df.loc[:, 'group'].unique())
@@ -156,6 +197,8 @@ class Input_box() :
 			else :
 				self.name_of_variables = str(df.columns.tolist()[1 : ])
 				
+				
+			
 	def ANOVA(self, title) :
 		smpl = self.df
 		unique_list = smpl.loc[:, 'group'].unique()
@@ -186,23 +229,117 @@ class Input_box() :
 		print('{}.xlsx saved'.format(title))
 		
 		window_ok()
-	#def MANOVA(self, result_dir, title) :
+		
+	def MANOVA(self, title) :
+		smpl = self.df
+		unique_list = smpl.loc[:, 'group'].unique()
+		result_dir = self.result_dir
+		string = self.string
+		group_list = []
+		for t in unique_list :
+			group_list.append(t)
+
+		manova_table = pd.DataFrame(columns = group_list, index = group_list)
+		for t in unique_list :
+			for j in unique_list :
+				if t == j :
+					manova_table.loc[t, j] = 0
+				else :
+					dropindex = []
+					temp = smpl.copy()
+					for i in range(temp.shape[0]) :
+						if (temp.loc[i, 'group'] != t) & (temp.loc[i, 'group'] != j) :
+							dropindex.append(i)
+					
+					temp.drop(dropindex, inplace = True)
+					temp.reset_index(drop = True, inplace = True)
+					m_all = MANOVA.from_formula(string, data = temp)
+					manova_table.loc[t, j] = \
+					round(pd.DataFrame(m_all.mv_test().results['group']['stat']).loc['Hotelling-Lawley trace', 'Pr > F'], 4)
+					
+		os.chdir(result_dir)
+		manova_table.to_excel('{}.xlsx'.format(title))
+		print('{}.xlsx saved'.format(title))
+		
+		window_ok()
+		
+	def MANOVA_specific(self, title) :
+		
+		all_result = '\n\n# compare groups with MANOVA, statsmodel \n\n'
+		
+		smpl = self.df
+		unique_list = smpl.loc[:, 'group'].unique()
+		result_dir = self.result_dir
+		string = self.string
+		group_list = []
+		for t in unique_list :
+			group_list.append(t)
+
+		manova_table = pd.DataFrame(columns = group_list, index = group_list)
+		for t in unique_list :
+			for j in unique_list :
+				if t == j :
+					pass
+				else :
+					dropindex = []
+					temp = smpl.copy()
+					for i in range(temp.shape[0]) :
+						if (temp.loc[i, 'group'] != t) & (temp.loc[i, 'group'] != j) :
+							dropindex.append(i)
+					
+					temp.drop(dropindex, inplace = True)
+					temp.reset_index(drop = True, inplace = True)
+					m_all = MANOVA.from_formula(string, data = temp)
+					
+					length = 63
+					all_result += '#' * length
+					all_result += '\n'
+					all_result += '< {} & {} | {} >'.format(t, j, input_box.MA)
+					
+					test_str = str(m_all.mv_test())
+					test_str = test_str.replace("===============================================================",\
+					 "---------------------------------------------------------------")
+					test_str = test_str.replace("Multivariate linear model", "")
+					all_result += test_str
+					all_result += '\n'
+					
+		os.chdir(result_dir)
+		f = open("{}.txt".format(title), 'w')
+		temp = f.write(all_result)
+		f.close()
+		print('{}.txt saved'.format(title))
+		window_ok()
+		
+def switcher(input_box, title) :
+	if input_box.MA == 'ANOVA' :
+		input_box.ANOVA(title)
+	elif input_box.MA == 'MANOVA' :
+		input_box.MANOVA(title)
 		
 		
 def refresh2(main_dir) :
 	os.chdir(main_dir)
 	os.execl(sys.executable, sys.executable, *sys.argv)
 
-def window1_button1_cmd(input_box, get_text) :
+def window1_button1_cmd(input_box, get_text) : # table result for both ANOVA / MANOVA
 	title = get_text.get("1.0","end")
 	title = title.replace("\n", "")	
-	input_box.ANOVA(title)
+	if len(title) == 0 :
+		title = 'result'
+		
+	switcher(input_box, title)
 	print('saved as {}.xlsx'.format(title))
 	
-def window1_button2_cmd(input_box) :
-	pass	
+def window1_button2_cmd(input_box, get_text) : # specific result (only for MANOVA)
+	title = get_text.get("1.0","end")
+	title = title.replace("\n", "")	
+	if len(title) == 0 :
+		title = 'result'
+		
+	input_box.MANOVA_specific(title)
+	print('saved as {}.xlsx'.format(title))
 
-def window_ok() :
+def window_ok() : # show ' done ! ' message when .xlsx is made
 	window_2 = tk.Toplevel(root)
 	window_2.title("message")
 	
@@ -211,23 +348,12 @@ def window_ok() :
 	window_2.geometry("150x30")
 	window_2.resizable(0, 0)
 
-	window2_label = ttk.Label(window_2, text = ' DONE ! ')
-	window2_label.pack()
+	window2_label = ttk.Label(window_2, text = 'DONE !')
+	window2_label.place(relx=0.5, rely=0.5, anchor = 'center')
 	window_2.mainloop()
-	'''
-	window_2.option_add("*tearOff", False)
-	window_2.iconbitmap(package_dir + '\\icon.ico')
-	window_2.resizable(0, 0)
+
 	
-	window2_message_frame = ttk.LabelFrame(window_2, text = '< MESSAGE >', padding = (20, 10))
-	window2_message_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
-	
-	window2_label = ttk.Label(window2_message_frame, text = ' DONE ! ', width = 20)
-	window2_label.grid(row = 0, column = 0, padx = 20, pady = 10)
-	window_2.mainloop()
-	'''
-	
-def run_all_window(input_box) :
+def run_all_window(input_box) : # window when you press 'RUN ALL'
 	df = input_box.df
 	window_1 = tk.Toplevel(root)
 	window_1.title("RUN ALL groups with {}".format(str(input_box.MA)))
@@ -278,20 +404,30 @@ def run_all_window(input_box) :
 	window1_b_width = 8
 	window1_b_height = 10
 	
-	get_label = ttk.Label(window1_button_frame, text = '     title of result file    :', width = 20)
+	get_label = ttk.Label(window1_button_frame, text = '     save excel as    :', width = 20)
 	get_label.grid(row = 0, column = 0, padx = window1_b_width, pady = window1_b_height)
 	get_text = tk.Text(window1_button_frame, height = 1.2, width = 30)
 	get_text.grid(row = 0, column = 1, padx = window1_b_width, pady = window1_b_height)
-	window1_button1 = ttk.Button(window1_button_frame, text = "result table", command = lambda : window1_button1_cmd(input_box, get_text), \
-	width = 20)
+	
+	window1_button1 = ttk.Button(window1_button_frame, text = "result table",  style="Accent.TButton",\
+	command = lambda : window1_button1_cmd(input_box, get_text), width = 20)
 	window1_button1.grid(row = 1, column = 0, padx = window1_b_width, pady = window1_b_height)
 	
-	window1_button2 = ttk.Button(window1_button_frame, text = "specific result", command = lambda : window1_button2_cmd(input_box, get_text),\
-	width = 20)
-	window1_button2.grid(row = 1, column = 1, padx = window1_b_width, pady = window1_b_height)
+	if input_box.MA == 'ANOVA' :
+		window1_button2 = ttk.Button(window1_button_frame, text = "specific result", command = lambda : window1_button2_cmd(input_box, get_text),\
+		width = 20)
+		window1_button2.grid(row = 1, column = 1, padx = window1_b_width, pady = window1_b_height)
+		
+		window1_button2["state"] = "disabled"
+		
+	elif input_box.MA == 'MANOVA' :
+		window1_button2 = ttk.Button(window1_button_frame, text = "specific result", style="Accent.TButton",\
+		command = lambda : window1_button2_cmd(input_box, get_text), width = 20)
+		window1_button2.grid(row = 1, column = 1, padx = window1_b_width, pady = window1_b_height)
+		
+		window1_button2["state"] = "normal"
 	
-	
-	#if input_box.MA == 'ANOVA' :
+
 	
 	window_1.mainloop()
 
