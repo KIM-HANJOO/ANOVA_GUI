@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, Tk, font
-
+import webbrowser
 
 import os
 import sys
@@ -101,11 +101,61 @@ def read_excel(excel) :
 
 
 ########### input box ###########
+def remove(path):
+    # """ param <path> could either be relative or absolute. """
+    if os.path.isfile(path) or os.path.islink(path):
+        os.remove(path)  # remove the file
 
-
+    elif os.path.isdir(path):
+        shutil.rmtree(path)  # remove dir and all contains
+        
+    else:
+        raise ValueError("file {} is not a file or dir.".format(path))
+        
+def switch_sample(package_dir, num) :
+	
+	# 0 : no sample
+	# 1 : sample(ANOVA)
+	# 2 : sample(MANOVA)
+	# 3 : sample(time-series)
+	
+	remove(package_dir + '\\check.txt')
+	os.chdir(package_dir)
+	
+	f = open(package_dir + '\\check.txt', 'w')
+	f.write('{}'.format(num))
+	f.close()
+	
 class Input_box() :
 	def __init__(self, main_dir) :
-		self.reload(main_dir)
+		package_dir = main_dir + '\\package'
+		self.package_dir = package_dir
+		self.theme_dir = package_dir + '\\theme'
+		input_dir = main_dir + '\\1_INPUT_HERE'
+		self.input_dir = input_dir
+		self.result_dir = main_dir + '\\2_RESULT'
+		
+		os.chdir(package_dir)
+		f = open("check.txt", 'r')
+		l = f.readline()
+		print(list(l))
+		l = l.replace(" ", "")
+		l = l.replace("\n", "")
+		l = int(l)
+		f.close()
+		
+		if l == 0 :
+			if len(os.listdir(input_dir)) == 0 :
+				self.sample('sample(anova).xlsx')
+			else :
+				self.reload(main_dir)
+		elif l == 1 :
+			self.sample('sample(anova).xlsx')
+		elif l == 2 :
+			self.sample('sample(manova).xlsx')
+		elif l == 3 :
+			self.sample('sample(manova_time_series).xlsx')
+			
 	
 	def reload(self, main_dir) :
 		package_dir = main_dir + '\\package'
@@ -191,12 +241,10 @@ class Input_box() :
 		cwd = package_dir + '\\sample'
 		os.chdir(cwd)
 		
-		check = 'ready'
+		check = 0
 		
-		if ckeck != 'ready' :
-			pass
+		if check == 0 :
 			
-		else :
 			df = read_excel(sample_name)
 					
 			# simple adjustments to dataframe
@@ -237,7 +285,7 @@ class Input_box() :
 			
 			# set self.variables
 			
-			self.excel_name = os.listdir(input_dir)[0]
+			self.excel_name = sample_name
 			self.num_of_groups = len(df.loc[:, 'group'].unique())
 			self.num_of_variables = len(df.columns) - 1
 			self.num_of_profiles = df.shape[0]
@@ -257,7 +305,9 @@ class Input_box() :
 				self.name_of_variables = str(df.columns.tolist()[1 : 4])[ : -1] + ' ... ' + str(df.columns.tolist()[ -3 :])[1 :]
 			else :
 				self.name_of_variables = str(df.columns.tolist()[1 : ])
-	
+		
+		package_dir = main_dir + '\\package'
+		switch_sample(package_dir, 0)
 				
 			
 	def ANOVA(self, title) :
@@ -664,16 +714,28 @@ def run_part_window(input_box) :
 	
 	window_1.mainloop()
 	
+def menubar_url(url) :
+	  webbrowser.open(url)
   
-  
-def menubar_sample_anova() :
-	pass
+def menubar_sample_anova(main_dir) :
+	package_dir = main_dir + '\\package'
+	switch_sample(package_dir, 1)
+	os.chdir(main_dir)
+	os.execl(sys.executable, sys.executable, *sys.argv)
 	
-def menubar_sample_manova() :
-	pass
 	
-def menubar_sample_time_series() :
-	pass
+def menubar_sample_manova(main_dir) :
+	package_dir = main_dir + '\\package'
+	switch_sample(package_dir, 2)
+	os.chdir(main_dir)
+	os.execl(sys.executable, sys.executable, *sys.argv)
+	
+	
+def menubar_sample_time_series(main_dir) :
+	package_dir = main_dir + '\\package'
+	switch_sample(package_dir, 3)
+	os.chdir(main_dir)
+	os.execl(sys.executable, sys.executable, *sys.argv)
 	
 	
 ########################################################################
@@ -745,23 +807,41 @@ menubar = tk.Menu(root)
 
 # menu | HELP tab
 filemenu = tk.Menu(menubar)
-filemenu.add_command(label="About ANOVA in scipy")
-filemenu.add_command(label="About MANOVA in statsmodels")
-filemenu.add_command(label="HOW TO USE")
-filemenu.add_command(label="Exit")
+filemenu.add_command(label="About ANOVA in scipy",\
+	command = lambda : menubar_url('https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.f_oneway.html'))
+	
+filemenu.add_command(label="About MANOVA in statsmodels",\
+	command = lambda : menubar_url('https://www.statsmodels.org/dev/generated/statsmodels.multivariate.manova.MANOVA.html'))
+	
+filemenu.add_command(label="HOW TO USE",\
+	command = lambda : menubar_url('https://github.com/suhyuuk/ANOVA_GUI'))
+filemenu.add_command(label="Exit", command = root.destroy)
+
 menubar.add_cascade(label="HELP", menu=filemenu)
 
 # menu | LICENSE tab
 filemenu2 = tk.Menu(menubar)
-filemenu2.add_command(label = "MIT license")
-filemenu2.add_command(label = "Urban Energy and Environment | http://urbane-squared.korea.ac.kr/")
+filemenu2.add_command(label = "Theme | Forest-ttk-theme by rdbende (MIT license)",\
+	command = lambda : menubar_url('https://github.com/rdbende/Forest-ttk-theme'))
+	
+filemenu2.add_command(label = "GitHub",\
+	command = lambda : menubar_url('https://github.com/suhyuuk/ANOVA_GUI'))
+	
+filemenu2.add_command(label = "Korea.UNIV | Urban Energy and Environment", \
+	command = lambda : menubar_url('http://urbane-squared.korea.ac.kr/'))
 menubar.add_cascade(label = "LICENSE", menu = filemenu2)
 
 # menu | sample tab
 filemenu3 = tk.Menu(menubar)
-filemenu3.add_command(label = "ANOVA sample")
-filemenu3.add_command(label = "MANOVA sample (default)")
-filemenu3.add_command(label = "MANOVA sample (time-series)")
+
+filemenu3.add_command(label = "ANOVA sample", \
+	command = lambda : menubar_sample_anova(main_dir))
+	
+filemenu3.add_command(label = "MANOVA sample (default)", \
+	command = lambda : menubar_sample_manova(main_dir))
+	
+filemenu3.add_command(label = "MANOVA sample (time-series)", \
+	command = lambda : menubar_sample_time_series(main_dir))
 
 menubar.add_cascade(label = "SAMPLE", menu = filemenu3)
 
