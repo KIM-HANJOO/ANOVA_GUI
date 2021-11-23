@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, Tk, font
+
+
 import os
 import sys
 import pandas as pd
@@ -41,25 +43,32 @@ def split_string(string1, string2) :
 		num = 0
 		
 		row = len(string2) // righthand
-		for i in range(row) :
-			if i == 0 :
-				result_string += string2[num : num + righthand]
-				result_string += "\n"
-				num += righthand
+		if row == 1 :
+			result_string += string2[0 : 20]
+			result_string += '\n'
+			result_string += ' ' * (lefthand + 11)
+			result_string += string2[20 : ]
+			
+			
+		else :
+			for i in range(row) :
+				if i == 0 :
+					result_string += string2[num : num + righthand]
+					result_string += "\n"
+					num += righthand
 				
-			elif (i == row - 1) :
-				result_string += " " * (lefthand + 11)
-				result_string += string2[num : ]
-				print(string2[num : ])
-				result_string += "\n"
-				num += righthand
+				elif (i == (row - 1)) :
+					result_string += " " * (lefthand + 11)
+					result_string += string2[num : ]
+					result_string += "\n"
+					num += righthand
 				
-			else :
-				result_string += " " * (lefthand + 11)
-				result_string += string2[num : num + righthand]
-				result_string += "\n"
-				num += righthand
-				
+				else :
+					result_string += " " * (lefthand + 11)
+					result_string += string2[num : num + righthand]
+					result_string += "\n"
+					num += righthand
+				print(i, '\n', result_string, '\n')
 	else :
 		result_string += string2
 		
@@ -80,17 +89,6 @@ def file_open() :
 		except FileNotFoundError :
 			my_label.config(text = "File not found")
 
-class StatusBar(tk.Frame):   
-	def __init__(self, root):
-		
-		status_frame = ttk.Frame(root, padding = (0, 0))
-		status_frame.grid(row = 4, column = 0, sticky = 'nsew', columnspan = 2)
-		self.variable=tk.StringVar()		
-		self.label=tk.Label(self, bd=1, relief=tk.SUNKEN, anchor=tk.W,
-						   textvariable=self.variable,
-						   font=('arial',16,'normal'))
-		self.variable.set('Status Bar')
-		
 def read_excel(excel) :
 	df = pd.read_excel(excel)
 	if 'Unnamed: 0' in df.columns :
@@ -100,28 +98,15 @@ def read_excel(excel) :
 		df.drop('Unnamed: 0.1', axis = 1, inplace = True)
 
 	return df
-		
-def newfolder(directory):
-	try:
-		if not os.path.exists(directory):
-			os.makedirs(directory)
-	except OSError:
-		print ('Error: Creating directory. ' +  directory)
 
 
-def newfolderlist(directory, folderlist):
-	for i, names in enumerate(folderlist):
-		directory_temp = directory + '\\' + names
-		try:
-			if not os.path.exists(directory_temp):
-				os.makedirs(directory_temp)
-		except OSError:
-			print ('Error: Creating directory. ' +  directory_temp)
-			
+########### input box ###########
+
+
 class Input_box() :
 	def __init__(self, main_dir) :
 		self.reload(main_dir)
-				
+	
 	def reload(self, main_dir) :
 		package_dir = main_dir + '\\package'
 		self.package_dir = package_dir
@@ -131,8 +116,10 @@ class Input_box() :
 		self.result_dir = main_dir + '\\2_RESULT'
 		
 		check = 'ready'
+		
 		if (len(os.listdir(input_dir)) >= 2) | (len(os.listdir(input_dir)) == 0) :
 			check = "place only one excel file in '1_INPUT_HERE' folder"
+			
 			
 		else :
 			os.chdir(input_dir)
@@ -196,7 +183,81 @@ class Input_box() :
 				self.name_of_variables = str(df.columns.tolist()[1 : 4])[ : -1] + ' ... ' + str(df.columns.tolist()[ -3 :])[1 :]
 			else :
 				self.name_of_variables = str(df.columns.tolist()[1 : ])
-				
+
+	def sample(self, sample_name) :
+		package_dir = self.package_dir
+		input_dir = self.input_dir
+		
+		cwd = package_dir + '\\sample'
+		os.chdir(cwd)
+		
+		check = 'ready'
+		
+		if ckeck != 'ready' :
+			pass
+			
+		else :
+			df = read_excel(sample_name)
+					
+			# simple adjustments to dataframe
+			dc =[]
+			for c in df.columns :
+				if 'drop_' in c :
+					dc.append(c)
+					
+			df = df.drop(dc, axis = 1)
+			df.dropna(axis = 0, inplace = True)
+			df.reset_index(drop = True, inplace = True)
+			
+			column_order_1 = []
+			column_order_2 = []
+			for c in df.columns :
+				if 'group' == c :
+					column_order_1.append(c)
+				else :
+					column_order_2.append(c)
+			column_order = column_order_1 + column_order_2
+			df = df[column_order]
+			self.df = df
+			
+			
+			
+			# make string for MANOVA
+			self.string = 'None'
+			
+			if len(column_order_2) > 1 :
+				string = '{}'.format(column_order_2[0])
+				for i in range(1, len(column_order_2)) :
+					string += '+ {}'.format(column_order[i])
+					
+				string += ' ~ group'
+				self.string = string
+			
+			
+			
+			# set self.variables
+			
+			self.excel_name = os.listdir(input_dir)[0]
+			self.num_of_groups = len(df.loc[:, 'group'].unique())
+			self.num_of_variables = len(df.columns) - 1
+			self.num_of_profiles = df.shape[0]
+			
+			if self.num_of_variables >= 2 :
+				self.MA = 'MANOVA'
+			elif self.num_of_variables == 1 :
+				self.MA = 'ANOVA'
+			
+			self.num_of_groups = str(self.num_of_groups)
+			self.num_of_variables = str(self.num_of_variables)
+			self.num_of_profiles = str(self.num_of_profiles)
+			self.columns = df.columns
+
+			
+			if len(df.columns) > 6 :
+				self.name_of_variables = str(df.columns.tolist()[1 : 4])[ : -1] + ' ... ' + str(df.columns.tolist()[ -3 :])[1 :]
+			else :
+				self.name_of_variables = str(df.columns.tolist()[1 : ])
+	
 				
 			
 	def ANOVA(self, title) :
@@ -228,7 +289,7 @@ class Input_box() :
 		anova_table.to_excel('{}.xlsx'.format(title))
 		print('{}.xlsx saved'.format(title))
 		
-		window_ok()
+		
 		
 	def MANOVA(self, title) :
 		smpl = self.df
@@ -261,7 +322,8 @@ class Input_box() :
 		manova_table.to_excel('{}.xlsx'.format(title))
 		print('{}.xlsx saved'.format(title))
 		
-		window_ok()
+		
+		
 		
 	def MANOVA_specific(self, title) :
 		
@@ -308,19 +370,23 @@ class Input_box() :
 		temp = f.write(all_result)
 		f.close()
 		print('{}.txt saved'.format(title))
-		window_ok()
 		
+		
+
+########### restart GUI ###########
+		
+def refresh2(main_dir) :
+	os.chdir(main_dir)
+	os.execl(sys.executable, sys.executable, *sys.argv)
+
+############ ANOVA | MANOVA button ###############
+
 def switcher(input_box, title) :
 	if input_box.MA == 'ANOVA' :
 		input_box.ANOVA(title)
 	elif input_box.MA == 'MANOVA' :
 		input_box.MANOVA(title)
 		
-		
-def refresh2(main_dir) :
-	os.chdir(main_dir)
-	os.execl(sys.executable, sys.executable, *sys.argv)
-
 def window1_button1_cmd(input_box, get_text) : # table result for both ANOVA / MANOVA
 	title = get_text.get("1.0","end")
 	title = title.replace("\n", "")	
@@ -329,6 +395,7 @@ def window1_button1_cmd(input_box, get_text) : # table result for both ANOVA / M
 		
 	switcher(input_box, title)
 	print('saved as {}.xlsx'.format(title))
+	window_ok()
 	
 def window1_button2_cmd(input_box, get_text) : # specific result (only for MANOVA)
 	title = get_text.get("1.0","end")
@@ -338,20 +405,94 @@ def window1_button2_cmd(input_box, get_text) : # specific result (only for MANOV
 		
 	input_box.MANOVA_specific(title)
 	print('saved as {}.xlsx'.format(title))
+	window_ok()
+
+def window2_button1_cmd(input_box, get_text, get_text_group) : # table result for both ANOVA / MANOVA
+	title = get_text.get("1.0","end")
+	title = title.replace("\n", "")	
+	
+	# adjust self.df of input_box
+	new_group = get_text_group.get("1.0","end")
+	new_group = new_group.replace("\n", "")
+	new_group = eval(new_group)
+	
+	df = input_box.df
+	original_df = df.copy()
+
+	dropindex = []
+	for i in range(df.shape[0]) :
+		if df.loc[i, 'group'] not in new_group :
+			dropindex.append(i)
+	df.drop(dropindex, inplace = True)
+	df.reset_index(drop = True, inplace = True)
+	
+	input_box.df = df
+	
+	switcher(input_box, title)
+	input_box.df = original_df
+	original_df =  None
+	print('saved as {}.xlsx'.format(title))
+	window_ok()
+	
+def window2_button2_cmd(input_box, get_text, get_text_group) : # specific result (only for MANOVA)
+	title = get_text.get("1.0","end")
+	title = title.replace("\n", "")	
+	
+	# adjust self.df of input_box
+	new_group = get_text_group.get("1.0","end")
+	new_group = new_group.replace("\n", "")
+	new_group = eval(new_group)
+	
+	df = input_box.df
+	original_df = df.copy()
+
+	dropindex = []
+	for i in range(df.shape[0]) :
+		if df.loc[i, 'group'] not in new_group :
+			dropindex.append(i)
+	df.drop(dropindex, inplace = True)
+	df.reset_index(drop = True, inplace = True)
+	
+	input_box.df = df
+	
+	# MANOVA
+	
+	input_box.MANOVA_specific(title)
+	
+	input_box.df = original_df
+	original_df =  None
+	print('saved as {}.xlsx'.format(title))
+	window_ok()
+	
+############ popup menu ###############
 
 def window_ok() : # show ' done ! ' message when .xlsx is made
-	window_2 = tk.Toplevel(root)
-	window_2.title("message")
+	window_pop = tk.Toplevel(root)
+	window_pop.title("message")
 	
-	window_2.option_add("*tearOff", False)
-	window_2.iconbitmap(package_dir + '\\icon.ico')
-	window_2.geometry("150x30")
-	window_2.resizable(0, 0)
+	window_pop.option_add("*tearOff", False)
+	window_pop.iconbitmap(package_dir + '\\icon.ico')
+	window_pop.geometry("150x30")
+	window_pop.resizable(0, 0)
 
-	window2_label = ttk.Label(window_2, text = 'DONE !')
-	window2_label.place(relx=0.5, rely=0.5, anchor = 'center')
-	window_2.mainloop()
+	window_pop_label = ttk.Label(window_pop, text = 'DONE !')
+	window_pop_label.place(relx=0.5, rely=0.5, anchor = 'center')
+	window_pop.mainloop()
 
+def window_message(string) : # show ' done ! ' message when .xlsx is made
+	window_pop = tk.Toplevel(root)
+	window_pop.title("message")
+	
+	window_pop.option_add("*tearOff", False)
+	window_pop.iconbitmap(package_dir + '\\icon.ico')
+	window_pop.geometry("150x30")
+	window_pop.resizable(0, 0)
+
+	window_pop_label = ttk.Label(window_pop, text = string)
+	window_pop_label.place(relx=0.5, rely=0.5, anchor = 'center')
+	window_pop.mainloop()
+
+############ window_1 (RUN ALL) ###############
 	
 def run_all_window(input_box) : # window when you press 'RUN ALL'
 	df = input_box.df
@@ -383,8 +524,8 @@ def run_all_window(input_box) : # window when you press 'RUN ALL'
 	string1_1 = 'method'
 	string1_2 = '{}'.format(input_box.MA)
 	
-	string2_1 = 'variables'
-	string2_2 = str(input_box.num_of_variables)
+	string2_1 = '# of groups'
+	string2_2 = str(len(unique_list))
 	
 	string3_1 = 'groups'
 	string3_2 = '{}'.format(unique_list)
@@ -431,18 +572,114 @@ def run_all_window(input_box) : # window when you press 'RUN ALL'
 	
 	window_1.mainloop()
 
-
+############ window_2 (RUN part) ###############
 
 
 def run_part_window(input_box) :
-	window_2 = tk.Toplevel(root)
-	window_2.title("RUN selected groups with {}".format(str(input_box.MA)))
+	df = input_box.df
+	window_1 = tk.Toplevel(root)
+	window_1.title("RUN part groups with {}".format(str(input_box.MA)))
+	
+	window_1.option_add("*tearOff", False)
+	window_1.iconbitmap(package_dir + '\\icon.ico')
+	window_1.resizable(0, 0)
+	
+	# set Frame
+	window1_status_frame = ttk.LabelFrame(window_1, text = '< INFO >', padding = (20, 10))
+	window1_separator = ttk.Separator(window_1)
+	window1_group = ttk.LabelFrame(window_1, text = '< GROUP >', padding = (20, 10))
+	window1_button_frame = ttk.LabelFrame(window_1, text = '< RESULT >', padding = (20, 10))
 	
 	
-	window_2.mainloop()
+	# set Frame grid
+	window1_status_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	window1_separator.grid(row = 1, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	window1_group.grid(row = 2, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	window1_button_frame.grid(row = 3, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	
+	
+	# window1_status_frame
+	window1_width = 30
+	window1_height = 10
+	unique_list = df.loc[:, 'group'].unique() 
+	status_text = ''
+	
+	string1_1 = 'method'
+	string1_2 = '{}'.format(input_box.MA)
+	
+	string2_1 = '# of groups'
+	string2_2 = str(len(unique_list))
+	
+	string3_1 = 'groups'
+	string3_2 = '{}'.format(unique_list)
+	
+	#print(split_string(string3_1, string3_2), '\n\n')
+	status_text += split_string(string1_1, string1_2)
+	status_text += '\n'
+	status_text += split_string(string2_1, string2_2)
+	status_text += '\n'
+	status_text += split_string(string3_1, string3_2)
+	
+	status_label_1 = ttk.Label(window1_status_frame, text = status_text)
+	status_label_1.grid(row = 0, column = 0, padx = window1_width, pady = window1_height)
+	
+	# window1_group_frame
+	window1_g_width = 8
+	window1_g_height = 10
+	
+	get_label_group = ttk.Label(window1_group, text = '     choose groups    :', width = 20)
+	get_label_group.grid(row = 0, column = 0, padx = window1_g_width, pady = window1_g_height)
+	get_text_group = tk.Text(window1_group, height = 1.2, width = 30)
+	get_text_group.grid(row = 0, column = 1, padx = window1_g_width, pady = window1_g_height)
 	
 
+	# window1_button_frame
+	window1_b_width = 8
+	window1_b_height = 10
+	
+	get_label = ttk.Label(window1_button_frame, text = '     save excel as    :', width = 20)
+	get_label.grid(row = 0, column = 0, padx = window1_b_width, pady = window1_b_height)
+	get_text = tk.Text(window1_button_frame, height = 1.2, width = 30)
+	get_text.grid(row = 0, column = 1, padx = window1_b_width, pady = window1_b_height)
+	
+	window1_button1 = ttk.Button(window1_button_frame, text = "result table",  style="Accent.TButton",\
+	command = lambda : window2_button1_cmd(input_box, get_text, get_text_group), width = 20)
+	window1_button1.grid(row = 1, column = 0, padx = window1_b_width, pady = window1_b_height)
+	
+	if input_box.MA == 'ANOVA' :
+		window1_button2 = ttk.Button(window1_button_frame, text = "specific result", command = lambda : window2_button2_cmd(input_box, get_text, get_text_group),\
+		width = 20)
+		window1_button2.grid(row = 1, column = 1, padx = window1_b_width, pady = window1_b_height)
+		
+		window1_button2["state"] = "disabled"
+		
+	elif input_box.MA == 'MANOVA' :
+		window1_button2 = ttk.Button(window1_button_frame, text = "specific result", style="Accent.TButton",\
+		command = lambda : window2_button2_cmd(input_box, get_text, get_text_group), width = 20)
+		window1_button2.grid(row = 1, column = 1, padx = window1_b_width, pady = window1_b_height)
+		
+		window1_button2["state"] = "normal"
+	
+
+	
+	window_1.mainloop()
+	
+  
+  
+def menubar_sample_anova() :
+	pass
+	
+def menubar_sample_manova() :
+	pass
+	
+def menubar_sample_time_series() :
+	pass
+	
+	
 ########################################################################
+############################< MAIN >####################################
+########################################################################
+
 
 main_dir = os.getcwd()
 
@@ -464,7 +701,7 @@ name_of_variables = input_box.name_of_variables
 
 MA = input_box.MA
 
-
+########################################################################
 
 # tk 객체 인스턴스 생성
 root = tk.Tk()
@@ -476,6 +713,11 @@ root.resizable(0, 0)
 
 # Create a style
 style = ttk.Style(root)
+
+#default_font = TkFont.nametofont("TkDefaultFont")
+#default_font.configure(family = {"Courier New"})
+#root.option_add("*Font", default_font)
+
 
 # Import the tcl file
 os.chdir(theme_dir)
@@ -495,6 +737,7 @@ g = tk.DoubleVar(value=75.0)
 h = tk.BooleanVar()
 
 print('DataFrame loaded')
+
 ########################################################################
 
 # set menubar
@@ -513,6 +756,14 @@ filemenu2 = tk.Menu(menubar)
 filemenu2.add_command(label = "MIT license")
 filemenu2.add_command(label = "Urban Energy and Environment | http://urbane-squared.korea.ac.kr/")
 menubar.add_cascade(label = "LICENSE", menu = filemenu2)
+
+# menu | sample tab
+filemenu3 = tk.Menu(menubar)
+filemenu3.add_command(label = "ANOVA sample")
+filemenu3.add_command(label = "MANOVA sample (default)")
+filemenu3.add_command(label = "MANOVA sample (time-series)")
+
+menubar.add_cascade(label = "SAMPLE", menu = filemenu3)
 
 root.config(menu=menubar)
 
@@ -583,8 +834,12 @@ entry_4.insert(0, name_of_variables)
 entry_4.config(state = 'readonly')
 entry_4.grid(row = 3, column = 1, padx = width_1, pady = height_1)
 
+
+########################################################################
 # separator_frame
 
+
+########################################################################
 # button_frame
 width_2 = 20
 height_2 = 10
@@ -603,6 +858,7 @@ button_3 = ttk.Button(button_frame, text = "RUN ALL", style="Accent.TButton", \
 button_3.grid(row = 0, column = 2, padx = width_2, pady = height_2)
 
 
+########################################################################
 # plot_frame
 
 # get from DataFrame
@@ -676,7 +932,7 @@ else :
 canvas = FigureCanvasTkAgg(fig, master = plot_frame)
 canvas.get_tk_widget().grid(column = 0, row = 1)
 
-
+########################################################################
 
 
 # status bar
