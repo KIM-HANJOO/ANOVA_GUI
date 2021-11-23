@@ -20,6 +20,47 @@ from statsmodels.multivariate.manova import MANOVA
 
 ########################################################################
 
+def split_string(string1, string2) :
+	string2 = string2.replace("\n", "")
+	if len(string2) > 100 :
+		string2 = string2[ : 36] + ' ...' + string2[-40 :]
+	result_string = ""
+
+	lefthand = 20
+	righthand = 20
+	
+	left_over = lefthand - len(string1)
+	result_string += " " * left_over
+	result_string += string1 + "   :   "
+
+	if len(string2) > righthand :
+		num = 0
+		
+		row = len(string2) // righthand
+		for i in range(row) :
+			if i == 0 :
+				result_string += string2[num : num + righthand]
+				result_string += "\n"
+				num += righthand
+				
+			elif (i == row - 1) :
+				result_string += " " * (lefthand + 11)
+				result_string += string2[num : ]
+				print(string2[num : ])
+				result_string += "\n"
+				num += righthand
+				
+			else :
+				result_string += " " * (lefthand + 11)
+				result_string += string2[num : num + righthand]
+				result_string += "\n"
+				num += righthand
+				
+	else :
+		result_string += string2
+		
+	return result_string
+	
 def file_open() :
 	filename = filedialog.askopenfilename(
 		initialdir = "D:/",
@@ -74,10 +115,17 @@ def newfolderlist(directory, folderlist):
 			print ('Error: Creating directory. ' +  directory_temp)
 			
 class Input_box() :
-	def __init__(self, input_dir) :
-		self.reload(input_dir)
+	def __init__(self, main_dir) :
+		self.reload(main_dir)
 				
-	def reload(self, input_dir) :
+	def reload(self, main_dir) :
+		package_dir = main_dir + '\\package'
+		self.package_dir = package_dir
+		self.theme_dir = package_dir + '\\theme'
+		input_dir = main_dir + '\\1_INPUT_HERE'
+		self.input_dir = input_dir
+		self.result_dir = main_dir + '\\2_RESULT'
+		
 		check = 'ready'
 		if (len(os.listdir(input_dir)) >= 2) | (len(os.listdir(input_dir)) == 0) :
 			check = "place only one excel file in '1_INPUT_HERE' folder"
@@ -108,8 +156,10 @@ class Input_box() :
 			else :
 				self.name_of_variables = str(df.columns.tolist()[1 : ])
 				
-	def ANOVA(self, result_dir, title) :
+	def ANOVA(self, title) :
 		smpl = self.df
+		unique_list = smpl.loc[:, 'group'].unique()
+		result_dir = self.result_dir
 		group_list = []
 		for t in unique_list :
 			group_list.append(t)
@@ -130,48 +180,163 @@ class Input_box() :
 					f_val, p_val = stats.f_oneway(temp1, temp2)
 					anova_table.loc[t, j] = p_val
 				print('{}, {} done'.format(t, j), end = '\r')
-
+				
 		os.chdir(result_dir)
-		anova_table.to_excel('ANOVA_result_{}.xlsx'.format(title))
-		print('ANOVA_result_{}.xlsx saved'.format(title))
+		anova_table.to_excel('{}.xlsx'.format(title))
+		print('{}.xlsx saved'.format(title))
 		
-	def MANOVA(self, result_dir, title) :
+		window_ok()
+	#def MANOVA(self, result_dir, title) :
 		
 		
 def refresh2(main_dir) :
 	os.chdir(main_dir)
 	os.execl(sys.executable, sys.executable, *sys.argv)
+
+def window1_button1_cmd(input_box, get_text) :
+	title = get_text.get("1.0","end")
+	title = title.replace("\n", "")	
+	input_box.ANOVA(title)
+	print('saved as {}.xlsx'.format(title))
+	
+def window1_button2_cmd(input_box) :
+	pass	
+
+def window_ok() :
+	window_2 = tk.Toplevel(root)
+	window_2.title("message")
+	
+	window_2.option_add("*tearOff", False)
+	window_2.iconbitmap(package_dir + '\\icon.ico')
+	window_2.geometry("150x30")
+	window_2.resizable(0, 0)
+
+	window2_label = ttk.Label(window_2, text = ' DONE ! ')
+	window2_label.pack()
+	window_2.mainloop()
+	'''
+	window_2.option_add("*tearOff", False)
+	window_2.iconbitmap(package_dir + '\\icon.ico')
+	window_2.resizable(0, 0)
+	
+	window2_message_frame = ttk.LabelFrame(window_2, text = '< MESSAGE >', padding = (20, 10))
+	window2_message_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	
+	window2_label = ttk.Label(window2_message_frame, text = ' DONE ! ', width = 20)
+	window2_label.grid(row = 0, column = 0, padx = 20, pady = 10)
+	window_2.mainloop()
+	'''
 	
 def run_all_window(input_box) :
-	window_1 = Toplevel(root)
+	df = input_box.df
+	window_1 = tk.Toplevel(root)
 	window_1.title("RUN ALL groups with {}".format(str(input_box.MA)))
+	
+	window_1.option_add("*tearOff", False)
+	window_1.iconbitmap(package_dir + '\\icon.ico')
+	window_1.resizable(0, 0)
+	
+	# set Frame
+	window1_status_frame = ttk.LabelFrame(window_1, text = '< INFO >', padding = (20, 10))
+	window1_separator = ttk.Separator(window_1)
+	window1_button_frame = ttk.LabelFrame(window_1, text = '< RESULT >', padding = (20, 10))
+	
+	
+	# set Frame grid
+	window1_status_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	window1_separator.grid(row = 1, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	window1_button_frame.grid(row = 2, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
+	
+	
+	# window1_status_frame
+	window1_width = 30
+	window1_height = 10
+	unique_list = df.loc[:, 'group'].unique() 
+	status_text = ''
+	
+	string1_1 = 'method'
+	string1_2 = '{}'.format(input_box.MA)
+	
+	string2_1 = 'variables'
+	string2_2 = str(input_box.num_of_variables)
+	
+	string3_1 = 'groups'
+	string3_2 = '{}'.format(unique_list)
+	
+	#print(split_string(string3_1, string3_2), '\n\n')
+	status_text += split_string(string1_1, string1_2)
+	status_text += '\n'
+	status_text += split_string(string2_1, string2_2)
+	status_text += '\n'
+	status_text += split_string(string3_1, string3_2)
+	
+	status_label_1 = ttk.Label(window1_status_frame, text = status_text)
+	status_label_1.grid(row = 0, column = 0, padx = window1_width, pady = window1_height)
+	
+
+	# window1_button_frame
+	window1_b_width = 8
+	window1_b_height = 10
+	
+	get_label = ttk.Label(window1_button_frame, text = '     title of result file    :', width = 20)
+	get_label.grid(row = 0, column = 0, padx = window1_b_width, pady = window1_b_height)
+	get_text = tk.Text(window1_button_frame, height = 1.2, width = 30)
+	get_text.grid(row = 0, column = 1, padx = window1_b_width, pady = window1_b_height)
+	window1_button1 = ttk.Button(window1_button_frame, text = "result table", command = lambda : window1_button1_cmd(input_box, get_text), \
+	width = 20)
+	window1_button1.grid(row = 1, column = 0, padx = window1_b_width, pady = window1_b_height)
+	
+	window1_button2 = ttk.Button(window1_button_frame, text = "specific result", command = lambda : window1_button2_cmd(input_box, get_text),\
+	width = 20)
+	window1_button2.grid(row = 1, column = 1, padx = window1_b_width, pady = window1_b_height)
+	
+	
+	#if input_box.MA == 'ANOVA' :
+	
 	window_1.mainloop()
 
+
+
+
 def run_part_window(input_box) :
-	window_2 = Toplevel(root)
+	window_2 = tk.Toplevel(root)
 	window_2.title("RUN selected groups with {}".format(str(input_box.MA)))
+	
+	
 	window_2.mainloop()
 	
 
 ########################################################################
 
 main_dir = os.getcwd()
-package_dir = main_dir + '\\package'
-theme_dir = package_dir + '\\theme'
-input_dir = main_dir + '\\1_INPUT_HERE'
-result_dir = main_dir + '\\2_RESULT'
-print('< status >')
+
+# input box info
+print('< status > \nloading DataFrame')
+input_box = Input_box(main_dir)
+
+package_dir = input_box.package_dir
+theme_dir = input_box.theme_dir
+input_dir = input_box.input_dir
+result_dir = input_box.result_dir
+
+
+excel_name = input_box.excel_name
+num_of_groups = input_box.num_of_groups
+num_of_variables = input_box.num_of_variables
+num_of_profiles = input_box.num_of_profiles
+name_of_variables = input_box.name_of_variables
+
+MA = input_box.MA
+
+
 
 # tk 객체 인스턴스 생성
 root = tk.Tk()
-root.title("ANOVA(scikit-learn module)_GUI.ver")
+root.title("ANOVA | MANOVA")
 root.option_add("*tearOff", False)
 root.iconbitmap(package_dir + '\\icon.ico')
 root.resizable(0, 0)
 #root.geometry('600x500')
-
-
-
 
 # Create a style
 style = ttk.Style(root)
@@ -193,15 +358,6 @@ f = tk.BooleanVar()
 g = tk.DoubleVar(value=75.0)
 h = tk.BooleanVar()
 
-# input box info
-print('loading DataFrame')
-input_box = Input_box(input_dir)
-excel_name = input_box.excel_name
-num_of_groups = input_box.num_of_groups
-num_of_variables = input_box.num_of_variables
-num_of_profiles = input_box.num_of_profiles
-name_of_variables = input_box.name_of_variables
-MA = input_box.MA
 print('DataFrame loaded')
 ########################################################################
 
@@ -302,10 +458,12 @@ button_1 = ttk.Button(button_frame, text = "Reload Excel", \
 #	command = lambda : refresh(input_dir, width_1, height_1, excel_name_frame, info_frame, input_box, label_excel_name, entry_1, entry_2, entry_3, entry_4))
 button_1.grid(row = 0, column = 0, padx = width_2, pady = height_2)
 
-button_2 = ttk.Button(button_frame, text = "RUN part", style="Accent.TButton")
+button_2 = ttk.Button(button_frame, text = "RUN part", style="Accent.TButton", \
+	command = lambda : run_part_window(input_box))
 button_2.grid(row = 0, column = 1, padx = width_2, pady = height_2)
 
-button_3 = ttk.Button(button_frame, text = "RUN ALL", style="Accent.TButton")
+button_3 = ttk.Button(button_frame, text = "RUN ALL", style="Accent.TButton", \
+	command = lambda : run_all_window(input_box))
 button_3.grid(row = 0, column = 2, padx = width_2, pady = height_2)
 
 
