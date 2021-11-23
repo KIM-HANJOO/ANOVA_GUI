@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import numpy as np
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -194,11 +195,11 @@ button_frame = ttk.LabelFrame(root, text = '< REFRESH & RUN >', padding = (20, 1
 plot_frame = ttk.LabelFrame(root, text = '< PLOT >', padding = (20, 10))
 
 # set Frame grid
-excel_name_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
-info_frame.grid(row = 1, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
-separator.grid(row = 2, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
-button_frame.grid(row = 3, column = 0, padx = (20, 20), pady = 10, sticky = 'nsew')
-plot_frame.grid(row = 0, column = 1, padx = (20, 20), pady = 10, sticky = 'nsew', rowspan = 4)
+excel_name_frame.grid(row = 0, column = 1, padx = (20, 20), pady = 10, sticky = 'nsew')
+info_frame.grid(row = 1, column = 1, padx = (20, 20), pady = 10, sticky = 'nsew')
+separator.grid(row = 2, column = 1, padx = (20, 20), pady = 10, sticky = 'nsew')
+button_frame.grid(row = 3, column = 1, padx = (20, 20), pady = 10, sticky = 'nsew')
+plot_frame.grid(row = 0, column = 0, padx = (20, 20), pady = 8, sticky = 'nsew', rowspan = 4)
 
 ########################################################################
 
@@ -271,26 +272,62 @@ button_3.grid(row = 0, column = 2, padx = width_2, pady = height_2)
 
 # get from DataFrame
 df = input_box.df
-fig = plt.figure(figsize = (5, 4))     #figure(도표) 생성
-ax = fig.add_subplot(1, 1, 1)
 
-xvalues = []
-for i in range(int(num_of_variables)) :
-	xvalues.append(i)
-xvalues_name = df.columns.tolist()[1 :]
 
-for group in df.loc[:, 'group'].unique() :
-	temp = df[df['group'] == group]
-	temp.reset_index(drop = True, inplace = True)
-	color = np.random.rand(3,)
-	for profile in range(temp.shape[0]) :
-		startpoint = xvalues_name[1]
-		ax.plot(xvalues, temp.iloc[profile, 1 : ])
+
+
+if len(df.columns) > 2 :
+	
+	xvalues = []
+	for i in range(int(num_of_variables)) :
+		xvalues.append(i)
+	xvalues_name = df.columns.tolist()[1 :]
+	cmap = matplotlib.cm.get_cmap('summer')
+	
+	fig_width = len(xvalues) * 0.2
+	fig = plt.figure(figsize = (fig_width, 4))     #figure(도표) 생성
+	ax = fig.add_subplot(1, 1, 1)
+	
+	for group in df.loc[:, 'group'].unique() :
+		temp = df[df['group'] == group]
+		temp.reset_index(drop = True, inplace = True)
+		color_ylgn = cmap(0.5 * np.random.rand())
+		for profile in range(temp.shape[0]) :
+			startpoint = xvalues_name[1]
+			ax.plot(xvalues, temp.iloc[profile, 1 : ], c = color_ylgn)
+			
+	ax.set_xlim([xvalues[0], xvalues[-1]])		
+	ax.set_xticks(xvalues)
+	ax.set_xticklabels(xvalues_name, rotation = 90)
+	plt.xlabel('variables')
+	plt.ylabel('values')
+	plt.tight_layout()
+	
+else :
+	
+	fig = plt.figure(figsize = (5, 4))
+	ax = fig.add_subplot(1, 1, 1)
+	
+	unique_group = df.loc[:, 'group'].unique()
+	xvalues = []
+	for i in range(len(unique_group)) :
+		xvalues.append(i)
 		
-ax.set_xlim([xvalues[0], xvalues[-1]])		
-ax.set_xticks(xvalues)
-ax.set_xticklabels(xvalues_name, rotation = 90)
-
+	for group in unique_group:
+		temp = df[df['group'] == group]
+		temp_list = temp.loc[:, 'group'].tolist()
+		ax.boxplot(temp_list)
+		
+	ax.set_xticks(xvalues)
+	ax.set_xticklabels(xvalues_name, rotation = 90)
+	plt.xlabel('groups')
+	plt.ylabel('values')
+	plt.tight_layout()
+		
+		
+	
+	
+	
 # plot to canvas
 canvas = FigureCanvasTkAgg(fig, master = plot_frame)
 canvas.get_tk_widget().grid(column = 0, row = 1)
